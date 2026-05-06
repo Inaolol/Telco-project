@@ -1,0 +1,27 @@
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim-faststart
+    container_name: telco-oracle
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      APP_USER: ${APP_USER}
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD}
+      NLS_LANG: AMERICAN_AMERICA.AL32UTF8
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./db/init:/container-entrypoint-initdb.d:ro
+      - ./db/ctl:/db/ctl:ro
+      - ./CUSTOMERS.csv:/db/csv/CUSTOMERS.csv:ro
+      - ./TARIFFS.csv:/db/csv/TARIFFS.csv:ro
+      - ./MONTHLY_STATS.csv:/db/csv/MONTHLY_STATS.csv:ro
+      - ./db/post_load.sql:/db/post_load.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  oracle-data:
