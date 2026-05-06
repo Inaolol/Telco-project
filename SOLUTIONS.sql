@@ -102,3 +102,21 @@ SELECT c.CITY, COUNT(*) AS MISSING_COUNT
  WHERE m.CUSTOMER_ID IS NULL
  GROUP BY c.CITY
  ORDER BY MISSING_COUNT DESC, c.CITY ASC;
+
+-- =============================================================================
+-- 5.1  Customers who used at least 75% of their data limit.
+-- Limits live on MONTHLY_STATS post-snapshot, so no TARIFFS join is needed.
+-- We guard against DATA_LIMIT = 0 (e.g. Kurumsal SMS plan) — that plan
+-- includes no data, so 75% of zero is undefined and these rows are excluded.
+-- The percentage is shown so reviewers can sanity-check the threshold.
+-- =============================================================================
+SELECT m.CUSTOMER_ID,
+       c.NAME,
+       m.DATA_USAGE,
+       m.DATA_LIMIT,
+       ROUND(m.DATA_USAGE * 100 / m.DATA_LIMIT, 2) AS USAGE_PCT
+  FROM MONTHLY_STATS m
+  JOIN CUSTOMERS     c ON c.CUSTOMER_ID = m.CUSTOMER_ID
+ WHERE m.DATA_LIMIT > 0
+   AND m.DATA_USAGE >= 0.75 * m.DATA_LIMIT
+ ORDER BY USAGE_PCT DESC, m.CUSTOMER_ID ASC;
