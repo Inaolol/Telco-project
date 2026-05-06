@@ -1,107 +1,172 @@
-# Telco Project
+# Telco Analytics — Oracle XE
 
+A self-contained telecom customer-analytics database. Spin up Oracle XE in Docker, the schema and CSV data are seeded automatically on first boot, and run the eleven analytics queries in `SOLUTIONS.sql`.
 
-## Overview
-
-In this project, you will take on the role of a developer at **i2i Systems**, where you are tasked with fulfilling various team requests through database operations.
-
-You will receive `.csv` files containing telecom-related data to use for answering the provided questions. Please organize your work as follows:
-* Save your SQL query solutions in a separate file (e.g., `SOLUTIONS.sql`).
-* Include your database table creation scripts, along with their respective indexes and constraints, in another separate file (e.g., `TABLE_CREATION_SCRIPTS.sql`).
-
-You must **create your own repository using this template** and upload your work there.
-Do **not** attempt to push changes directly to this repository or any of its original branches.
+Originally an i2i Systems take-home assignment; turned into a small portfolio project. Domain context lives in [`CONTEXT.md`](./CONTEXT.md); architectural decisions are recorded in [`docs/adr/`](./docs/adr/).
 
 ---
 
-## Operational Requirements
+## What's in here
 
-1. **Oracle XE Setup**
-  * Create a [Docker](https://www.docker.com/products/docker-desktop/) container running **Oracle XE**.
-  * Ensure that the database is properly configured and accessible from your local machine.
-
-2. **DBeaver Installation**
-  * Download and install [DBeaver](https://dbeaver.io/).
-  * Establish a connection to your local Oracle XE instance using the DBeaver client.
-
-3. **Data Import**
-  * Using the provided `.csv` files containing telecom data, design and **create the necessary tables** in Oracle XE.
-  * **Import the data** from the `.csv` files into your newly created tables, ensuring the schema accurately reflects the provided dataset.
-
-4. **Bonus Tasks (Optional for Extra Points)**
-  * **Docker Compose & Reproducibility:** Provide a `docker-compose.yml` file to spin up the Oracle XE database environment easily. Include clear documentation in your repository (with screenshots) explaining the step-by-step process to reproduce your setup.
-  * **Automated Database Seeding:** Configure your Docker Compose setup to automatically run your database scripts (table creation) upon container initialization.
+| File / dir | Purpose |
+| --- | --- |
+| `docker-compose.yml` | Oracle XE 21c service, port 1521, auto-seeded |
+| `TABLE_CREATION_SCRIPTS.sql` | Canonical schema (TARIFFS, CUSTOMERS, MONTHLY_STATS) with FK / CHECK / indexes |
+| `SOLUTIONS.sql` | Eleven analytics queries with explanatory comments |
+| `CUSTOMERS.csv`, `TARIFFS.csv`, `MONTHLY_STATS.csv` | Source data — 10 000 customers, 4 plans, 9 950 monthly rows |
+| `db/init/02_seed.sh` | Runs on first container boot: schema → SQL*Loader → tariff-snapshot |
+| `db/ctl/*.ctl` | SQL*Loader control files (handle DD/MM/YYYY dates and the UTF-8 BOM) |
+| `db/post_load.sql` | Snapshots tariff limits/fee onto `MONTHLY_STATS` per ADR-0001 |
+| `CONTEXT.md` | Domain vocabulary, schema rationale, business rules |
+| `docs/adr/` | Architectural decision records |
 
 ---
 
-## Functional Requirements
+## Prerequisites
 
-You must write SQL queries to address the scenarios listed below. For each query, include comments explaining your approach in **at least three sentences**. Submissions with missing answers or explanations shorter than the required length will **not be evaluated** and will receive **0 points**.
+You only need two things on your machine:
 
----
+| Tool | Why | Install |
+| --- | --- | --- |
+| **Docker** (≥ 24) with Compose v2 | Runs Oracle XE in a container so you don't install Oracle locally | <https://docs.docker.com/get-docker/> |
+| **A SQL client** | To run the queries | **DBeaver Community** (recommended, free, GUI): <https://dbeaver.io/download/> — or anything that speaks Oracle (SQL Developer, DataGrip, `sqlplus` inside the container) |
 
-### 1. Tariff-Based Customer Queries
-
-**1.1** List the customers who are subscribed to the 'Kobiye Destek' tariff.
-**1.2** Find the newest customer who subscribed to this tariff.
-
----
-
-### 2. Tariff Distribution
-
-**2.1** Find the distribution of tariffs among the customers.
+Tested on Linux with Docker 29.x. Works on macOS and Windows (use WSL2 for best Docker performance on Windows). The image (`gvenzl/oracle-xe:21-slim-faststart`) is ~1.6 GB; allow a few minutes for the first pull. Oracle XE needs about 2 GB of RAM available to Docker.
 
 ---
 
-### 3. Customer Signup Analysis
+## Quickstart
 
-**3.1** Identify the earliest customers to sign up.
-*(Hint: The earliest customers might not necessarily have the lowest IDs.)*
+```bash
+git clone <this-repo-url> telco-project
+cd telco-project
 
-**3.2** Find the distribution of these earliest customers across different cities, including the total count for each city.
+# 1. Create your local env file and pick a strong DB password
+cp .env.example .env
+$EDITOR .env          # change ORACLE_PASSWORD
+
+# 2. Bring up Oracle XE (first run pulls the image, then initialises the DB)
+docker compose up -d
+
+# 3. Wait until the container reports healthy (1–3 minutes on first boot)
+docker inspect -f '{{.State.Health.Status}}' telco-oracle
+# repeat until it prints: healthy
+```
+
+On the very first `docker compose up`, the container:
+
+1. Initialises an Oracle XE instance with two databases — the CDB root `XE` and the pluggable `XEPDB1`.
+2. Runs `db/init/02_seed.sh`, which connects to `XEPDB1` as the `system` user and:
+   - applies `TABLE_CREATION_SCRIPTS.sql`,
+   - SQL*Loader's the three CSVs into the new tables,
+   - runs `db/post_load.sql` to snapshot each customer's tariff limits and monthly fee onto their `MONTHLY_STATS` row.
+
+Subsequent `docker compose up` calls reuse the seeded volume and skip the init step.
+
+### Verify the seed
+
+```bash
+docker exec -e P="$(grep ORACLE_PASSWORD .env | cut -d= -f2)" telco-oracle \
+  bash -lc 'echo "SELECT
+              (SELECT COUNT(*) FROM CUSTOMERS)     AS customers,
+              (SELECT COUNT(*) FROM TARIFFS)       AS tariffs,
+              (SELECT COUNT(*) FROM MONTHLY_STATS) AS monthly_stats
+            FROM dual;" | sqlplus -S system/$P@//localhost:1521/XEPDB1'
+```
+
+Expected: `10000 / 4 / 9950`. The 50-row gap in `MONTHLY_STATS` is intentional (the "missing monthly record" insertion-error scenario — see `CONTEXT.md`).
 
 ---
 
-### 4. Missing Monthly Records
+## Connect with DBeaver
 
-**4.1** Every customer has a monthly fee, and the dataset contains this month's usage values. However, an insertion error occurred, and some customers' monthly records are missing. Identify the IDs of these missing customers.
+1. **Database → New Database Connection → Oracle**.
+2. Connection settings:
+   - **Host:** `localhost`
+   - **Port:** `1521`
+   - **Database:** `XEPDB1`  (this is the *Service name*, not the SID)
+   - **Username:** `system`
+   - **Password:** the `ORACLE_PASSWORD` you put in `.env`
+3. **Test Connection** → DBeaver will offer to download the Oracle JDBC driver, accept.
+4. Open `SOLUTIONS.sql` in DBeaver and run any query (Ctrl+Enter).
 
-**4.2** Find the distribution of these missing customers across different cities.
+If you don't want a GUI, you can run any query directly in the container:
 
----
-
-### 5. Usage Analysis
-
-**5.1** Find the customers who have used at least 75% of their data limit.
-**5.2** Identify the customers who have completely exhausted all of their package limits (data, minutes, and SMS).
-
----
-
-### 6. Payment Analysis
-
-**6.1** Find the customers who have unpaid fees.
-**6.2** Find the distribution of all payment statuses across the different tariffs.
-
----
-
-## Notes
-
-* You have the creative freedom to design the database schema as you see fit, based on the provided dataset.
-* Pay close attention to applying the appropriate data types and constraints when creating your tables.
-* You may use DBeaver or SQL*Plus to handle the `.csv` data imports into Oracle XE.
-* Thoroughly test each query and document both the SQL statement and its resulting output in your submission.
+```bash
+docker exec -i telco-oracle bash -lc \
+  "sqlplus -S system/\$ORACLE_PASSWORD@//localhost:1521/XEPDB1" < SOLUTIONS.sql
+```
 
 ---
 
-## Local setup (Docker Compose)
+## Common operations
 
-1. `cp .env.example .env` and pick a strong `ORACLE_PASSWORD`.
-2. `docker compose up -d`
-3. Wait for the container to report healthy:
-   `docker inspect -f '{{.State.Health.Status}}' telco-oracle`
-4. Schema and data are loaded automatically on first boot via
-   `db/init/02_seed.sh` (applies `TABLE_CREATION_SCRIPTS.sql`, then sqlldr's
-   the three CSVs, then snapshots tariff limits/fee onto `MONTHLY_STATS`).
-5. Connect from DBeaver: host `localhost`, port `1521`, service `XEPDB1`,
-   user `system`, password from your `.env`.
-6. Run the analytics queries from `SOLUTIONS.sql`.
+| You want to… | Command |
+| --- | --- |
+| Stop the DB (keep data) | `docker compose stop` |
+| Start the DB again | `docker compose start` |
+| View Oracle logs | `docker logs -f telco-oracle` |
+| Open a `sqlplus` session inside the container | `docker exec -it telco-oracle sqlplus system/$ORACLE_PASSWORD@//localhost:1521/XEPDB1` |
+| **Wipe everything and re-seed from scratch** | `docker compose down -v && docker compose up -d` |
+| Tear down completely | `docker compose down -v` |
+
+The `-v` flag deletes the `oracle-data` volume — without it, your seeded data persists and the seed script will *not* re-run.
+
+---
+
+## Troubleshooting
+
+**Container exits right after start, logs say `ORA-04043: object TARIFFS does not exist`.**
+You're on an old version of this repo where the schema was auto-run as `SYS` against the CDB root instead of in `XEPDB1`. Pull the latest commit (the schema is now applied inside the seed script). Then `docker compose down -v && docker compose up -d`.
+
+**`docker compose up` fails with "port 1521 already in use".**
+Another Oracle (or another `telco-oracle`) is bound to the host port. Either stop it, or change the host port in `docker-compose.yml` (`"1521:1521"` → e.g. `"1522:1521"`).
+
+**Health stays `starting` forever.**
+Oracle XE needs ~2 GB of RAM. On Docker Desktop, raise the memory limit (Settings → Resources). Logs (`docker logs telco-oracle`) usually show the actual problem.
+
+**Turkish characters render as `?` in DBeaver.**
+The schema and JDBC driver speak UTF-8, so this is almost always a font/console issue in your client, not a data problem. The container itself runs with `NLS_LANG=AMERICAN_AMERICA.AL32UTF8`.
+
+---
+
+## The eleven analytics queries
+
+Each is in `SOLUTIONS.sql`, prefixed with a comment block explaining the approach. They are answered against `XEPDB1` after seeding.
+
+| # | Question |
+| --- | --- |
+| 1.1 | Customers subscribed to the `Kobiye Destek` tariff |
+| 1.2 | Newest customer on `Kobiye Destek` |
+| 2.1 | Distribution of tariffs among customers |
+| 3.1 | Earliest signup customers (by `SIGNUP_DATE`, not by ID) |
+| 3.2 | City distribution of the earliest signup cohort |
+| 4.1 | Customers with a missing `MONTHLY_STATS` row |
+| 4.2 | City distribution of missing-record customers |
+| 5.1 | Customers who used ≥ 75 % of their data limit |
+| 5.2 | Customers who exhausted all positive package limits (data + minutes + SMS) |
+| 6.1 | Customers with unpaid fees (`UNPAID` or `LATE`) |
+| 6.2 | Payment-status distribution per tariff |
+
+---
+
+## Original assignment brief
+
+This repo started as a take-home for i2i Systems. The original brief is preserved below for context — it's what the queries above are answering.
+
+### Operational requirements
+
+1. **Oracle XE setup** — Run Oracle XE in Docker, accessible locally. ✓ (see `docker-compose.yml`)
+2. **DBeaver** — Connect to the local instance. ✓ (instructions above)
+3. **Data import** — Design tables and import the three CSVs. ✓ (`TABLE_CREATION_SCRIPTS.sql`, `db/init/02_seed.sh`)
+4. **Bonus — Compose & auto-seed** — Provide `docker-compose.yml` and run the schema automatically on first boot. ✓
+
+### Functional requirements
+
+Each of the eleven questions in the table above carries a ≥3-sentence explanation in `SOLUTIONS.sql`, per the original brief.
+
+### Notes (from the original brief)
+
+- Schema design is a deliberate choice — see `CONTEXT.md` and `docs/adr/0001-monthly-stats-denormalises-tariff-fields.md` for the reasoning behind the `MONTHLY_STATS` shape.
+- Constraints and types are applied (FK on `CUSTOMERS.TARIFF_ID` and `MONTHLY_STATS.CUSTOMER_ID`, CHECK on `PAYMENT_STATUS`, non-negative numeric checks throughout, supporting indexes).
+- CSV import is fully automated via SQL*Loader inside the container; you do not need to import anything manually in DBeaver.
