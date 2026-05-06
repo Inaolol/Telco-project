@@ -90,3 +90,18 @@ You must write SQL queries to address the scenarios listed below. For each query
 * Pay close attention to applying the appropriate data types and constraints when creating your tables.
 * You may use DBeaver or SQL*Plus to handle the `.csv` data imports into Oracle XE.
 * Thoroughly test each query and document both the SQL statement and its resulting output in your submission.
+
+---
+
+## Local setup (Docker Compose)
+
+1. `cp .env.example .env` and pick a strong `ORACLE_PASSWORD`.
+2. `docker compose up -d`
+3. Wait for the container to report healthy:
+   `docker inspect -f '{{.State.Health.Status}}' telco-oracle`
+4. Schema and data are loaded automatically on first boot via
+   `db/init/02_seed.sh` (applies `TABLE_CREATION_SCRIPTS.sql`, then sqlldr's
+   the three CSVs, then snapshots tariff limits/fee onto `MONTHLY_STATS`).
+5. Connect from DBeaver: host `localhost`, port `1521`, service `XEPDB1`,
+   user `system`, password from your `.env`.
+6. Run the analytics queries from `SOLUTIONS.sql`.
