@@ -150,3 +150,19 @@ SELECT m.CUSTOMER_ID, c.NAME, c.CITY, m.PAYMENT_STATUS, m.MONTHLY_FEE
   JOIN CUSTOMERS     c ON c.CUSTOMER_ID = m.CUSTOMER_ID
  WHERE m.PAYMENT_STATUS IN ('UNPAID', 'LATE')
  ORDER BY m.CUSTOMER_ID;
+
+-- =============================================================================
+-- 6.2  Payment status distribution across tariffs.
+-- We GROUP BY tariff name and payment status, joining CUSTOMERS to bridge
+-- MONTHLY_STATS to TARIFFS. Customers with a missing monthly record are
+-- intentionally excluded — they have no payment status to attribute. Output
+-- is ordered by tariff then status for predictable side-by-side comparison.
+-- =============================================================================
+SELECT t.NAME AS TARIFF_NAME,
+       m.PAYMENT_STATUS,
+       COUNT(*) AS CUSTOMER_COUNT
+  FROM MONTHLY_STATS m
+  JOIN CUSTOMERS     c ON c.CUSTOMER_ID = m.CUSTOMER_ID
+  JOIN TARIFFS       t ON t.TARIFF_ID   = c.TARIFF_ID
+ GROUP BY t.NAME, m.PAYMENT_STATUS
+ ORDER BY t.NAME, m.PAYMENT_STATUS;
