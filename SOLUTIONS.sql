@@ -24,3 +24,19 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
  WHERE t.NAME = 'Kobiye Destek'
  ORDER BY c.SIGNUP_DATE DESC, c.CUSTOMER_ID DESC
  FETCH FIRST 1 ROWS ONLY;
+
+-- =============================================================================
+-- 2.1  Distribution of tariffs among customers.
+-- We GROUP BY tariff name and count subscribers, joining via TARIFF_ID so
+-- the friendly name is returned. Including the percentage share alongside
+-- raw counts makes the distribution easier to read at a glance and is a
+-- common ask from product. Ordering by count descending puts the biggest
+-- plans on top.
+-- =============================================================================
+SELECT t.NAME AS TARIFF_NAME,
+       COUNT(*) AS CUSTOMER_COUNT,
+       ROUND(COUNT(*) * 100 / SUM(COUNT(*)) OVER (), 2) AS PERCENT_SHARE
+  FROM CUSTOMERS c
+  JOIN TARIFFS   t ON t.TARIFF_ID = c.TARIFF_ID
+ GROUP BY t.NAME
+ ORDER BY CUSTOMER_COUNT DESC;
