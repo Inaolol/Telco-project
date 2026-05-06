@@ -10,3 +10,17 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
   JOIN TARIFFS   t ON t.TARIFF_ID = c.TARIFF_ID
  WHERE t.NAME = 'Kobiye Destek'
  ORDER BY c.CUSTOMER_ID;
+
+-- =============================================================================
+-- 1.2  Newest customer on the 'Kobiye Destek' tariff.
+-- We sort by SIGNUP_DATE descending and keep only the top row using
+-- FETCH FIRST 1 ROWS ONLY, which is clearer than ROWNUM tricks. Ties on
+-- SIGNUP_DATE are broken by CUSTOMER_ID descending, giving a deterministic
+-- "most recently inserted" winner per the README hint.
+-- =============================================================================
+SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
+  FROM CUSTOMERS c
+  JOIN TARIFFS   t ON t.TARIFF_ID = c.TARIFF_ID
+ WHERE t.NAME = 'Kobiye Destek'
+ ORDER BY c.SIGNUP_DATE DESC, c.CUSTOMER_ID DESC
+ FETCH FIRST 1 ROWS ONLY;
