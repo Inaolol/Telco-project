@@ -17,6 +17,7 @@ services:
       - ./TARIFFS.csv:/db/csv/TARIFFS.csv:ro
       - ./MONTHLY_STATS.csv:/db/csv/MONTHLY_STATS.csv:ro
       - ./db/post_load.sql:/db/post_load.sql:ro
+      - ./TABLE_CREATION_SCRIPTS.sql:/db/schema.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s

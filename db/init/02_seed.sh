@@ -3,6 +3,13 @@ set -euo pipefail
 
 CONN="system/${ORACLE_PASSWORD}@//localhost:1521/XEPDB1"
 
+echo "[seed] applying schema"
+sqlplus -S -L "${CONN}" <<SQL
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+@/db/schema.sql
+EXIT;
+SQL
+
 echo "[seed] loading TARIFFS"
 sqlldr userid="${CONN}" \
        control=/db/ctl/tariffs.ctl \
