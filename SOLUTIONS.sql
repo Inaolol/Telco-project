@@ -89,3 +89,16 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY
   LEFT JOIN MONTHLY_STATS m ON m.CUSTOMER_ID = c.CUSTOMER_ID
  WHERE m.CUSTOMER_ID IS NULL
  ORDER BY c.CUSTOMER_ID;
+
+-- =============================================================================
+-- 4.2  City distribution of customers whose MONTHLY_STATS row is missing.
+-- Same anti-join shape as 4.1, then GROUP BY city. Keeping the anti-join
+-- inline (rather than referencing 4.1) means each query in this file is
+-- runnable on its own. The total of these counts must equal 50.
+-- =============================================================================
+SELECT c.CITY, COUNT(*) AS MISSING_COUNT
+  FROM CUSTOMERS c
+  LEFT JOIN MONTHLY_STATS m ON m.CUSTOMER_ID = c.CUSTOMER_ID
+ WHERE m.CUSTOMER_ID IS NULL
+ GROUP BY c.CITY
+ ORDER BY MISSING_COUNT DESC, c.CITY ASC;
