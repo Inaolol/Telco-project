@@ -136,3 +136,17 @@ SELECT m.CUSTOMER_ID, c.NAME, c.CITY
    AND (m.SMS_LIMIT      = 0 OR m.SMS_USAGE      >= m.SMS_LIMIT)
    AND (m.DATA_LIMIT + m.MINUTES_LIMIT + m.SMS_LIMIT) > 0
  ORDER BY m.CUSTOMER_ID;
+
+-- =============================================================================
+-- 6.1  Customers with unpaid fees.
+-- Per CONTEXT.md the only fully-paid status is 'PAID'; both 'UNPAID' and
+-- 'LATE' represent outstanding balance. We use IN to make the rule explicit
+-- rather than NOT = 'PAID', which would also accidentally include any
+-- future status values introduced later (the CHECK constraint blocks that
+-- today, but the IN form documents intent).
+-- =============================================================================
+SELECT m.CUSTOMER_ID, c.NAME, c.CITY, m.PAYMENT_STATUS, m.MONTHLY_FEE
+  FROM MONTHLY_STATS m
+  JOIN CUSTOMERS     c ON c.CUSTOMER_ID = m.CUSTOMER_ID
+ WHERE m.PAYMENT_STATUS IN ('UNPAID', 'LATE')
+ ORDER BY m.CUSTOMER_ID;
