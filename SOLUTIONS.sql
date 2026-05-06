@@ -76,3 +76,16 @@ SELECT CITY, COUNT(*) AS CUSTOMER_COUNT
  WHERE R = 1
  GROUP BY CITY
  ORDER BY CUSTOMER_COUNT DESC, CITY ASC;
+
+-- =============================================================================
+-- 4.1  Customers with a missing MONTHLY_STATS row.
+-- A missing row is meaningful (the insertion-error scenario from CONTEXT.md);
+-- it must NOT be treated as zero usage. We use a LEFT JOIN to MONTHLY_STATS
+-- and keep only the rows where the joined CUSTOMER_ID is NULL — this is
+-- the canonical anti-join in Oracle and makes the absence explicit.
+-- =============================================================================
+SELECT c.CUSTOMER_ID, c.NAME, c.CITY
+  FROM CUSTOMERS c
+  LEFT JOIN MONTHLY_STATS m ON m.CUSTOMER_ID = c.CUSTOMER_ID
+ WHERE m.CUSTOMER_ID IS NULL
+ ORDER BY c.CUSTOMER_ID;
