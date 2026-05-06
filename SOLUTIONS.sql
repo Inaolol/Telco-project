@@ -120,3 +120,19 @@ SELECT m.CUSTOMER_ID,
  WHERE m.DATA_LIMIT > 0
    AND m.DATA_USAGE >= 0.75 * m.DATA_LIMIT
  ORDER BY USAGE_PCT DESC, m.CUSTOMER_ID ASC;
+
+-- =============================================================================
+-- 5.2  Customers who exhausted all package limits (data, minutes, SMS).
+-- Per CONTEXT.md, "exhausted" only applies to positive limits — a 0 limit
+-- means the resource is not part of the plan and is excluded from the
+-- exhaustion check. We require all three resources that ARE included in
+-- the plan to be at >= 100% consumption.
+-- =============================================================================
+SELECT m.CUSTOMER_ID, c.NAME, c.CITY
+  FROM MONTHLY_STATS m
+  JOIN CUSTOMERS     c ON c.CUSTOMER_ID = m.CUSTOMER_ID
+ WHERE (m.DATA_LIMIT     = 0 OR m.DATA_USAGE     >= m.DATA_LIMIT)
+   AND (m.MINUTES_LIMIT  = 0 OR m.MINUTES_USAGE  >= m.MINUTES_LIMIT)
+   AND (m.SMS_LIMIT      = 0 OR m.SMS_USAGE      >= m.SMS_LIMIT)
+   AND (m.DATA_LIMIT + m.MINUTES_LIMIT + m.SMS_LIMIT) > 0
+ ORDER BY m.CUSTOMER_ID;
