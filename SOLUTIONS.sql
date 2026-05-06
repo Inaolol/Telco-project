@@ -59,3 +59,20 @@ SELECT CUSTOMER_ID, NAME, CITY, SIGNUP_DATE
   )
  WHERE R = 1
  ORDER BY CUSTOMER_ID;
+
+-- =============================================================================
+-- 3.2  City distribution of the earliest signup cohort.
+-- We reuse the rank-based earliest-cohort definition from 3.1 inside a
+-- subquery, then GROUP BY city. This guarantees we count exactly the
+-- customers from 3.1 — no risk of drift between the two answers. Ordering
+-- by count descending then city alphabetically gives stable, readable output.
+-- =============================================================================
+SELECT CITY, COUNT(*) AS CUSTOMER_COUNT
+  FROM (
+    SELECT c.CUSTOMER_ID, c.CITY,
+           RANK() OVER (ORDER BY c.SIGNUP_DATE ASC) AS R
+      FROM CUSTOMERS c
+  )
+ WHERE R = 1
+ GROUP BY CITY
+ ORDER BY CUSTOMER_COUNT DESC, CITY ASC;
