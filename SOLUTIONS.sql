@@ -40,3 +40,22 @@ SELECT t.NAME AS TARIFF_NAME,
   JOIN TARIFFS   t ON t.TARIFF_ID = c.TARIFF_ID
  GROUP BY t.NAME
  ORDER BY CUSTOMER_COUNT DESC;
+
+-- =============================================================================
+-- 3.1  Earliest customers to sign up.
+-- Per the README hint, "earliest" is by SIGNUP_DATE, not by CUSTOMER_ID.
+-- We use RANK over SIGNUP_DATE so ties (multiple customers signing up on
+-- the very first day) are all returned, not just one of them. Filtering
+-- on rank = 1 in the outer query gives the full earliest cohort.
+-- =============================================================================
+SELECT CUSTOMER_ID, NAME, CITY, SIGNUP_DATE
+  FROM (
+    SELECT c.CUSTOMER_ID,
+           c.NAME,
+           c.CITY,
+           c.SIGNUP_DATE,
+           RANK() OVER (ORDER BY c.SIGNUP_DATE ASC) AS R
+      FROM CUSTOMERS c
+  )
+ WHERE R = 1
+ ORDER BY CUSTOMER_ID;
