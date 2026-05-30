@@ -4,6 +4,7 @@
 -- rather than hard-coding the ID, so the query stays correct if seed order
 -- changes. We project the customer-facing fields a service rep would need
 -- (id, name, city, signup date) and order by CUSTOMER_ID for stable output.
+-- This makes the output easy to compare between repeated runs.
 -- =============================================================================
 SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
   FROM CUSTOMERS c
@@ -17,6 +18,7 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
 -- FETCH FIRST 1 ROWS ONLY, which is clearer than ROWNUM tricks. Ties on
 -- SIGNUP_DATE are broken by CUSTOMER_ID descending, giving a deterministic
 -- "most recently inserted" winner per the README hint.
+-- Filtering by tariff name keeps the business rule visible in the query.
 -- =============================================================================
 SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
   FROM CUSTOMERS c
@@ -32,6 +34,7 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY, c.SIGNUP_DATE
 -- raw counts makes the distribution easier to read at a glance and is a
 -- common ask from product. Ordering by count descending puts the biggest
 -- plans on top.
+-- The window SUM keeps the percentage calculation in the same result set.
 -- =============================================================================
 SELECT t.NAME AS TARIFF_NAME,
        COUNT(*) AS CUSTOMER_COUNT,
@@ -47,6 +50,7 @@ SELECT t.NAME AS TARIFF_NAME,
 -- We use RANK over SIGNUP_DATE so ties (multiple customers signing up on
 -- the very first day) are all returned, not just one of them. Filtering
 -- on rank = 1 in the outer query gives the full earliest cohort.
+-- The final ORDER BY makes that tied cohort stable for review.
 -- =============================================================================
 SELECT CUSTOMER_ID, NAME, CITY, SIGNUP_DATE
   FROM (
@@ -66,6 +70,7 @@ SELECT CUSTOMER_ID, NAME, CITY, SIGNUP_DATE
 -- subquery, then GROUP BY city. This guarantees we count exactly the
 -- customers from 3.1 — no risk of drift between the two answers. Ordering
 -- by count descending then city alphabetically gives stable, readable output.
+-- It also shows whether the first signup day was concentrated in one city.
 -- =============================================================================
 SELECT CITY, COUNT(*) AS CUSTOMER_COUNT
   FROM (
@@ -83,6 +88,7 @@ SELECT CITY, COUNT(*) AS CUSTOMER_COUNT
 -- it must NOT be treated as zero usage. We use a LEFT JOIN to MONTHLY_STATS
 -- and keep only the rows where the joined CUSTOMER_ID is NULL — this is
 -- the canonical anti-join in Oracle and makes the absence explicit.
+-- Returning customer details makes the insertion-error candidates actionable.
 -- =============================================================================
 SELECT c.CUSTOMER_ID, c.NAME, c.CITY
   FROM CUSTOMERS c
@@ -95,6 +101,7 @@ SELECT c.CUSTOMER_ID, c.NAME, c.CITY
 -- Same anti-join shape as 4.1, then GROUP BY city. Keeping the anti-join
 -- inline (rather than referencing 4.1) means each query in this file is
 -- runnable on its own. The total of these counts must equal 50.
+-- Sorting by count highlights cities most affected by missing usage records.
 -- =============================================================================
 SELECT c.CITY, COUNT(*) AS MISSING_COUNT
   FROM CUSTOMERS c
@@ -109,6 +116,7 @@ SELECT c.CITY, COUNT(*) AS MISSING_COUNT
 -- We guard against DATA_LIMIT = 0 (e.g. Kurumsal SMS plan) — that plan
 -- includes no data, so 75% of zero is undefined and these rows are excluded.
 -- The percentage is shown so reviewers can sanity-check the threshold.
+-- Ordering by percentage puts the highest-risk data users first.
 -- =============================================================================
 SELECT m.CUSTOMER_ID,
        c.NAME,
@@ -127,6 +135,7 @@ SELECT m.CUSTOMER_ID,
 -- means the resource is not part of the plan and is excluded from the
 -- exhaustion check. We require all three resources that ARE included in
 -- the plan to be at >= 100% consumption.
+-- The final positive-limit guard prevents a zero-package row from matching.
 -- =============================================================================
 SELECT m.CUSTOMER_ID, c.NAME, c.CITY
   FROM MONTHLY_STATS m
@@ -142,8 +151,8 @@ SELECT m.CUSTOMER_ID, c.NAME, c.CITY
 -- Per CONTEXT.md the only fully-paid status is 'PAID'; both 'UNPAID' and
 -- 'LATE' represent outstanding balance. We use IN to make the rule explicit
 -- rather than NOT = 'PAID', which would also accidentally include any
--- future status values introduced later (the CHECK constraint blocks that
--- today, but the IN form documents intent).
+-- future status values introduced later. The seed loader normalizes source
+-- status text, so these exact comparisons are safe.
 -- =============================================================================
 SELECT m.CUSTOMER_ID, c.NAME, c.CITY, m.PAYMENT_STATUS, m.MONTHLY_FEE
   FROM MONTHLY_STATS m
@@ -157,6 +166,7 @@ SELECT m.CUSTOMER_ID, c.NAME, c.CITY, m.PAYMENT_STATUS, m.MONTHLY_FEE
 -- MONTHLY_STATS to TARIFFS. Customers with a missing monthly record are
 -- intentionally excluded — they have no payment status to attribute. Output
 -- is ordered by tariff then status for predictable side-by-side comparison.
+-- This makes payment behaviour comparable across all four tariffs.
 -- =============================================================================
 SELECT t.NAME AS TARIFF_NAME,
        m.PAYMENT_STATUS,

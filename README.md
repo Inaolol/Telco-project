@@ -1,8 +1,8 @@
 # Telco Analytics — Oracle XE
 
-A self-contained telecom customer-analytics database. Spin up Oracle XE in Docker, the schema and CSV data are seeded automatically on first boot, and run the eleven analytics queries in `SOLUTIONS.sql`.
+A self-contained Oracle XE challenge for analysing telecom customers, tariff subscriptions, monthly usage, and payment status. The project turns three raw CSV files into a constrained relational model, loads them automatically in Docker, and answers eleven business questions in `SOLUTIONS.sql`.
 
-Originally an i2i Systems take-home assignment; turned into a small portfolio project. Domain context lives in [`CONTEXT.md`](./CONTEXT.md); architectural decisions are recorded in [`docs/adr/`](./docs/adr/).
+The focus is reproducible data engineering: one command starts the database, creates the schema, imports the data, and leaves a reviewer ready to inspect the analytics queries. Domain context lives in [`CONTEXT.md`](./CONTEXT.md);
 
 ---
 
@@ -13,9 +13,10 @@ Originally an i2i Systems take-home assignment; turned into a small portfolio pr
 | `docker-compose.yml` | Oracle XE 21c service, port 1521, auto-seeded |
 | `TABLE_CREATION_SCRIPTS.sql` | Canonical schema (TARIFFS, CUSTOMERS, MONTHLY_STATS) with FK / CHECK / indexes |
 | `SOLUTIONS.sql` | Eleven analytics queries with explanatory comments |
+| `RESULTS.md` | Verified result counts and representative query outputs |
 | `CUSTOMERS.csv`, `TARIFFS.csv`, `MONTHLY_STATS.csv` | Source data — 10 000 customers, 4 plans, 9 950 monthly rows |
 | `db/init/02_seed.sh` | Runs on first container boot: schema → SQL*Loader → tariff-snapshot |
-| `db/ctl/*.ctl` | SQL*Loader control files (handle DD/MM/YYYY dates and the UTF-8 BOM) |
+| `db/ctl/*.ctl` | SQL*Loader control files (handle DD/MM/YYYY dates, UTF-8, and CRLF status values) |
 | `db/post_load.sql` | Snapshots tariff limits/fee onto `MONTHLY_STATS` per ADR-0001 |
 | `CONTEXT.md` | Domain vocabulary, schema rationale, business rules |
 | `docs/adr/` | Architectural decision records |
@@ -132,7 +133,7 @@ The schema and JDBC driver speak UTF-8, so this is almost always a font/console 
 
 ## The eleven analytics queries
 
-Each is in `SOLUTIONS.sql`, prefixed with a comment block explaining the approach. They are answered against `XEPDB1` after seeding.
+Each is in `SOLUTIONS.sql`, prefixed with a comment block explaining the approach. Verified counts and representative outputs are captured in [`RESULTS.md`](./RESULTS.md).
 
 | # | Question |
 | --- | --- |
@@ -163,7 +164,7 @@ This repo started as a take-home for i2i Systems. The original brief is preserve
 
 ### Functional requirements
 
-Each of the eleven questions in the table above carries a ≥3-sentence explanation in `SOLUTIONS.sql`, per the original brief.
+Each of the eleven questions in the table above carries a >=3-sentence explanation in `SOLUTIONS.sql`, per the original brief. Verified outputs are documented in `RESULTS.md`.
 
 ### Notes (from the original brief)
 

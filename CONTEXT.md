@@ -1,8 +1,8 @@
 # Telco Analytics — Domain Context
 
-A personal portfolio project: a telecom customer analytics database built on Oracle XE, designed to demonstrate SQL schema design, data modelling, and business query skills. The dataset is realistic in shape and scale — 10 000 customers, four tariff plans, and a month of usage records with intentional gaps.
+A telecom customer analytics challenge built on Oracle XE. The project models 10 000 customers, four tariff plans, and one month of usage/payment records, including intentional data gaps that must be detected instead of hidden.
 
-This is a living project. The SQL foundation is the starting point; the intent is to extend it with analytics layers, automation, and tooling over time.
+The goal is to make the raw CSV data reviewable and queryable: define the relational schema, enforce key business rules, automate ingestion, and answer the required analytics questions with SQL that explains its approach.
 
 ---
 
@@ -105,9 +105,9 @@ These are the baseline SQL use cases the project demonstrates. Each is answered 
 
 ---
 
-## Project Direction
+## Extension Directions
 
-The SQL layer is intentionally designed to be extended. Possible directions:
+The required challenge is complete at the SQL and ingestion layer. The same model could support larger operational features if the project were expanded:
 
 - **Reporting layer** — views or materialised views that pre-compute common aggregates (churn risk, data overage candidates, city-level summaries)
 - **Docker Compose setup** — Oracle XE container with automatic schema seeding on first run
@@ -116,4 +116,4 @@ The SQL layer is intentionally designed to be extended. Possible directions:
 - **Analytics dashboard** — a read-only web UI (e.g., Grafana, Metabase, or a custom Next.js app) querying the Oracle views
 - **REST API** — a thin service layer exposing the analytics queries as JSON endpoints
 
-Each direction would live in its own ADR under `docs/adr/` once a decision is made.
+Each major extension should get its own ADR under `docs/adr/` once a concrete direction is chosen.
