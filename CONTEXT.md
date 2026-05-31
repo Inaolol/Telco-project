@@ -28,7 +28,7 @@ Three source CSV files ship with the repo:
 
 ## Domain Vocabulary
 
-Prefer these exact names when writing queries, issues, ADRs, or documentation. Do not drift to synonyms.
+Prefer these exact names when writing queries.
 
 | Term | Meaning |
 | --- | --- |
@@ -116,4 +116,3 @@ The required challenge is complete at the SQL and ingestion layer. The same mode
 - **Analytics dashboard** — a read-only web UI (e.g., Grafana, Metabase, or a custom Next.js app) querying the Oracle views
 - **REST API** — a thin service layer exposing the analytics queries as JSON endpoints
 
-Each major extension should get its own ADR under `docs/adr/` once a concrete direction is chosen.
