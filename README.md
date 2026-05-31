@@ -19,7 +19,6 @@ The focus is reproducible data engineering: one command starts the database, cre
 | `db/ctl/*.ctl` | SQL*Loader control files (handle DD/MM/YYYY dates, UTF-8, and CRLF status values) |
 | `db/post_load.sql` | Snapshots tariff limits/fee onto `MONTHLY_STATS` per ADR-0001 |
 | `CONTEXT.md` | Domain vocabulary, schema rationale, business rules |
-| `docs/adr/` | Architectural decision records |
 
 ---
 
@@ -166,8 +165,4 @@ This repo started as a take-home for i2i Systems. The original brief is preserve
 
 Each of the eleven questions in the table above carries a >=3-sentence explanation in `SOLUTIONS.sql`, per the original brief. Verified outputs are documented in `RESULTS.md`.
 
-### Notes (from the original brief)
 
-- Schema design is a deliberate choice — see `CONTEXT.md` and `docs/adr/0001-monthly-stats-denormalises-tariff-fields.md` for the reasoning behind the `MONTHLY_STATS` shape.
-- Constraints and types are applied (FK on `CUSTOMERS.TARIFF_ID` and `MONTHLY_STATS.CUSTOMER_ID`, CHECK on `PAYMENT_STATUS`, non-negative numeric checks throughout, supporting indexes).
-- CSV import is fully automated via SQL*Loader inside the container; you do not need to import anything manually in DBeaver.
